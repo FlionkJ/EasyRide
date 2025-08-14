@@ -1,19 +1,23 @@
-package routing;
+package eu.flionkj.easy_ride.routing;
 
 public abstract class AbstractRide {
+    private String passengerName;
     private String startingPoint;
     private String destinationPoint;
-    private String passengerName;
 
-    public AbstractRide(String startingPoint, String destinationPoint, String passengerName) {
+    public AbstractRide(String passengerName, String startingPoint, String destinationPoint) {
+        this.passengerName = passengerName;
         this.startingPoint = startingPoint;
         this.destinationPoint = destinationPoint;
-        this.passengerName = passengerName;
     }
 
     @Override
     public String toString() {
-        return "Fahrgast: " + passengerName + ", von: " + startingPoint + ", nach: " + destinationPoint;
+        return "Passenger: " + passengerName + ", Start Point: " + startingPoint + ", Destination Point: " + destinationPoint;
+    }
+
+    public String getPassengerName() {
+        return passengerName;
     }
 
     public String getStartingPoint() {
@@ -22,10 +26,6 @@ public abstract class AbstractRide {
 
     public String getDestinationPoint() {
         return destinationPoint;
-    }
-
-    public String getPassengerName() {
-        return passengerName;
     }
 
 }

@@ -1,4 +1,4 @@
-package routing;
+package eu.flionkj.easy_ride.routing;
 
 public class TaxiRide extends AbstractRide {
 

@@ -1,6 +1,6 @@
-package routing;
+package eu.flionkj.easy_ride.Deprecated.routing;
 
-import data.DB;
+import eu.flionkj.easy_ride.data.DB;
 
 public class CreateRoute {
 
