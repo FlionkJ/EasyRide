@@ -1,0 +1,11 @@
+# https://code.visualstudio.com/docs/devcontainers/create-dev-container#_extend-your-docker-compose-file-for-development
+
+name: "easyRide_server_devcontainer"
+
+services:
+  swagger-editor:
+    image: docker.swagger.io/swaggerapi/swagger-editor:next-v5
+    container_name: swagger-editor-easyRide
+    ports:
+      - 9001:80
+
