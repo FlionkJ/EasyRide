@@ -1,17 +1,15 @@
 package eu.flionkj.easy_ride.web.service;
 
-import eu.flionkj.easy_ride.data.DB;
-import eu.flionkj.easy_ride.domain.CreateRideRequest;
-import eu.flionkj.easy_ride.routing.AbstractRide;
-import eu.flionkj.easy_ride.routing.TaxiRide;
+import eu.flionkj.easy_ride.data.MongoDB;
+import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService {
 
-    private final DB db;
+    private final MongoDB db;
 
-    public CustomerService(DB db) {
+    public CustomerService(MongoDB db) {
         this.db = db;
     }
 
@@ -27,9 +25,7 @@ public class CustomerService {
             throw new IllegalArgumentException("Destination Point cannot be empty.");
         }
 
-        AbstractRide newRide = new TaxiRide(request.name(), request.startingPoint(), request.destinationPoint());
-
-        db.addRide(newRide);
+        db.addRide(request);
 
         return "Trip was created successfully.";
     }
