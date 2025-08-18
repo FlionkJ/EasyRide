@@ -5,3 +5,4 @@ spring:
   data:
     mongodb:
       uri: mongodb://easy_ride:secretpassword@localhost:9001/easy_ride?authSource=admin
+      auto-index-creation: true
