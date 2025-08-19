@@ -19,7 +19,7 @@ public class AdminService {
     }
 
     public CreateStoppingPointResult createStoppingPoint(CreateStoppingPointRequest request) {
-        // Validate request
+        // validate request
         if (request.name() == null || request.name().isBlank()) {
             return CreateStoppingPointResult.NAME_IS_EMPTY;
         }
@@ -35,7 +35,7 @@ public class AdminService {
     }
 
     public CreateConnectionResult createConnection(CreateConnectionRequest request) {
-        // Validate request
+        // validate request
         if (request.start() == null || request.start().isBlank()) {
             return CreateConnectionResult.START_IS_EMPTY;
         }
@@ -64,7 +64,7 @@ public class AdminService {
     }
 
     public AddDriverResult addDriver(AddDriverRequest request) {
-        // Validate request
+        // validate request
         if (request.name() == null || request.name().isBlank()) {
             return AddDriverResult.NAME_IS_EMPTY;
         }

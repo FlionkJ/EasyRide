@@ -38,7 +38,7 @@ public class MongoDB {
     }
 
     public void addRide(CreateRideRequest request) {
-        RideToProcess newRide = new RideToProcess(request.name(), request.startingPoint(), request.destinationPoint());
+        RideToProcess newRide = new RideToProcess(request.id(), request.start(), request.end());
 
         rideRepository.save(newRide);
         logger.info("Ride successfully saved in MongoDB.");
