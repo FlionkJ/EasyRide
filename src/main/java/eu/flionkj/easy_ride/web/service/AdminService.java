@@ -3,6 +3,8 @@ package eu.flionkj.easy_ride.web.service;
 import eu.flionkj.easy_ride.data.MongoDB;
 import eu.flionkj.easy_ride.domain.connection.CreateConnectionResult;
 import eu.flionkj.easy_ride.domain.connection.CreateConnectionRequest;
+import eu.flionkj.easy_ride.domain.driver.AddDriverRequest;
+import eu.flionkj.easy_ride.domain.driver.AddDriverResult;
 import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointRequest;
 import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointResult;
 import org.springframework.stereotype.Service;
@@ -59,5 +61,18 @@ public class AdminService {
 
         db.addConnection(request);
         return CreateConnectionResult.CREATED_SUCCESSFULLY;
+    }
+
+    public AddDriverResult addDriver(AddDriverRequest request) {
+        // Validate request
+        if (request.name() == null || request.name().isBlank()) {
+            return AddDriverResult.NAME_IS_EMPTY;
+        }
+        if (request.passenger() <= 0) {
+            return AddDriverResult.PASSENGER_IS_0;
+        }
+
+        db.addDriver(request);
+        return AddDriverResult.CREATED_SUCCESSFULLY;
     }
 }

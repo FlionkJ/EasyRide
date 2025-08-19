@@ -1,10 +1,13 @@
 package eu.flionkj.easy_ride.data;
 
 import eu.flionkj.easy_ride.data.repository.ConnectionRepository;
+import eu.flionkj.easy_ride.data.repository.DriverRepository;
 import eu.flionkj.easy_ride.data.repository.RideRepository;
 import eu.flionkj.easy_ride.data.repository.StoppingPointRepository;
 import eu.flionkj.easy_ride.domain.connection.Connection;
 import eu.flionkj.easy_ride.domain.connection.CreateConnectionRequest;
+import eu.flionkj.easy_ride.domain.driver.AddDriverRequest;
+import eu.flionkj.easy_ride.domain.driver.Driver;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.ride.RideToProcess;
 import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointRequest;
@@ -15,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class MongoDB {
@@ -25,12 +27,14 @@ public class MongoDB {
     private final RideRepository rideRepository;
     private final StoppingPointRepository stoppingPointRepository;
     private final ConnectionRepository connectionRepository;
+    private final DriverRepository driverRepository;
 
     @Autowired
-    public MongoDB(RideRepository rideRepository, StoppingPointRepository stoppingPointRepository, ConnectionRepository connectionRepository) {
+    public MongoDB(RideRepository rideRepository, StoppingPointRepository stoppingPointRepository, ConnectionRepository connectionRepository, DriverRepository driverRepository) {
         this.rideRepository = rideRepository;
         this.stoppingPointRepository = stoppingPointRepository;
         this.connectionRepository = connectionRepository;
+        this.driverRepository = driverRepository;
     }
 
     public void addRide(CreateRideRequest request) {
@@ -68,5 +72,10 @@ public class MongoDB {
 
     public boolean doesConnectionExist(String start, String end) {
         return connectionRepository.existsByStartAndEnd(start, end);
+    }
+
+    public void addDriver(AddDriverRequest driver) {
+        Driver newDriver = new Driver(driver.name(), driver.passenger());
+        driverRepository.save(newDriver);
     }
 }
