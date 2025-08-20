@@ -1,6 +1,8 @@
 package eu.flionkj.easy_ride.web.service;
 
 import eu.flionkj.easy_ride.data.MongoDB;
+import eu.flionkj.easy_ride.domain.customer.AddCustomerRequest;
+import eu.flionkj.easy_ride.domain.customer.AddCustomerResult;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.ride.CreateRideResult;
 import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointResult;
@@ -37,6 +39,16 @@ public class CustomerService {
 
         db.addRide(request);
         return CreateRideResult.CREATED_SUCCESSFULLY;
+    }
+
+    public AddCustomerResult addCustomer(AddCustomerRequest request) {
+        // validate request
+        if (request.name() == null || request.name().isEmpty()) {
+            return AddCustomerResult.NAME_IS_EMPTY;
+        }
+
+        db.addCustomer(request);
+        return AddCustomerResult.CREATED_SUCCESSFULLY;
     }
 
 }

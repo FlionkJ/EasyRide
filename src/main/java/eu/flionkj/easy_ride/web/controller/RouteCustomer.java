@@ -1,5 +1,7 @@
 package eu.flionkj.easy_ride.web.controller;
 
+import eu.flionkj.easy_ride.domain.customer.AddCustomerRequest;
+import eu.flionkj.easy_ride.domain.customer.AddCustomerResult;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.DefaultResponse;
 import eu.flionkj.easy_ride.domain.ride.CreateRideResult;
@@ -43,5 +45,15 @@ public class RouteCustomer {
 
         };
 
+    }
+
+    @PostMapping("/add")
+    public ResponseEntity<DefaultResponse> addCustomer(@RequestBody AddCustomerRequest request) {
+        AddCustomerResult result = customerService.addCustomer(request);
+
+        return switch (result) {
+            case NAME_IS_EMPTY ->  new ResponseEntity<>(new DefaultResponse("Name cannot be empty."), HttpStatus.BAD_REQUEST);
+            case CREATED_SUCCESSFULLY ->   new ResponseEntity<>(new DefaultResponse("Customer added successfully."), HttpStatus.CREATED);
+        };
     }
 }

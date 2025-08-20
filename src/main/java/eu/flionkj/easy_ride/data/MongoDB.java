@@ -1,11 +1,10 @@
 package eu.flionkj.easy_ride.data;
 
-import eu.flionkj.easy_ride.data.repository.ConnectionRepository;
-import eu.flionkj.easy_ride.data.repository.DriverRepository;
-import eu.flionkj.easy_ride.data.repository.RideRepository;
-import eu.flionkj.easy_ride.data.repository.StoppingPointRepository;
+import eu.flionkj.easy_ride.data.repository.*;
 import eu.flionkj.easy_ride.domain.connection.Connection;
 import eu.flionkj.easy_ride.domain.connection.CreateConnectionRequest;
+import eu.flionkj.easy_ride.domain.customer.AddCustomerRequest;
+import eu.flionkj.easy_ride.domain.customer.Customer;
 import eu.flionkj.easy_ride.domain.driver.AddDriverRequest;
 import eu.flionkj.easy_ride.domain.driver.Driver;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
@@ -28,13 +27,15 @@ public class MongoDB {
     private final StoppingPointRepository stoppingPointRepository;
     private final ConnectionRepository connectionRepository;
     private final DriverRepository driverRepository;
+    private final CustomerRepository customerRepository;
 
     @Autowired
-    public MongoDB(RideRepository rideRepository, StoppingPointRepository stoppingPointRepository, ConnectionRepository connectionRepository, DriverRepository driverRepository) {
+    public MongoDB(RideRepository rideRepository, StoppingPointRepository stoppingPointRepository, ConnectionRepository connectionRepository, DriverRepository driverRepository, CustomerRepository customerRepository) {
         this.rideRepository = rideRepository;
         this.stoppingPointRepository = stoppingPointRepository;
         this.connectionRepository = connectionRepository;
         this.driverRepository = driverRepository;
+        this.customerRepository = customerRepository;
     }
 
     public void addRide(CreateRideRequest request) {
@@ -77,5 +78,10 @@ public class MongoDB {
     public void addDriver(AddDriverRequest driver) {
         Driver newDriver = new Driver(driver.name(), driver.passenger());
         driverRepository.save(newDriver);
+    }    
+    
+    public void addCustomer(AddCustomerRequest customer) {
+        Customer newCustomer = new Customer(customer.name());
+        customerRepository.save(newCustomer);
     }
 }
