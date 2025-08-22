@@ -1,6 +1,6 @@
 package eu.flionkj.easy_ride.domain.customer;
 
-public enum AddCustomerResult {
+public enum RegisterCustomerResult {
     CREATED_SUCCESSFULLY,
-    NAME_IS_EMPTY;
+    NAME_IS_EMPTY,
 }

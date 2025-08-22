@@ -1,11 +1,10 @@
 package eu.flionkj.easy_ride.web.service;
 
 import eu.flionkj.easy_ride.data.MongoDB;
-import eu.flionkj.easy_ride.domain.customer.AddCustomerRequest;
-import eu.flionkj.easy_ride.domain.customer.AddCustomerResult;
+import eu.flionkj.easy_ride.domain.customer.RegisterCustomerRequest;
+import eu.flionkj.easy_ride.domain.customer.RegisterCustomerResult;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.ride.CreateRideResult;
-import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointResult;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -41,14 +40,14 @@ public class CustomerService {
         return CreateRideResult.CREATED_SUCCESSFULLY;
     }
 
-    public AddCustomerResult addCustomer(AddCustomerRequest request) {
+    public RegisterCustomerResult registerCustomer(RegisterCustomerRequest request) {
         // validate request
         if (request.name() == null || request.name().isEmpty()) {
-            return AddCustomerResult.NAME_IS_EMPTY;
+            return RegisterCustomerResult.NAME_IS_EMPTY;
         }
 
         db.addCustomer(request);
-        return AddCustomerResult.CREATED_SUCCESSFULLY;
+        return RegisterCustomerResult.CREATED_SUCCESSFULLY;
     }
 
 }

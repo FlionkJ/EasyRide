@@ -1,0 +1,300 @@
+package eu.flionkj.easy_ride.service;
+
+import eu.flionkj.easy_ride.data.repository.*;
+import eu.flionkj.easy_ride.domain.connection.Connection;
+import eu.flionkj.easy_ride.domain.driver.Driver;
+import eu.flionkj.easy_ride.domain.ride.RideProcessed;
+import eu.flionkj.easy_ride.domain.ride.RideToProcess;
+import eu.flionkj.easy_ride.domain.ride.Route;
+import eu.flionkj.easy_ride.domain.ride.RouteStatus;
+import eu.flionkj.easy_ride.domain.ride.RouteStoppingPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+public class RoutePlanningService {
+
+    private static final Logger logger = LoggerFactory.getLogger(RoutePlanningService.class);
+
+    private final RideRepository rideRepository;
+    private final ConnectionRepository connectionRepository;
+    private final RouteRepository routeRepository;
+    private final RideProcessedRepository rideProcessedRepository;
+    private final DriverRepository driverRepository;
+    private final StoppingPointRepository stoppingPointRepository;
+
+    @Autowired
+    public RoutePlanningService(
+            RideRepository rideRepository,
+            ConnectionRepository connectionRepository,
+            RouteRepository routeRepository,
+            RideProcessedRepository rideProcessedRepository,
+            DriverRepository driverRepository,
+            StoppingPointRepository stoppingPointRepository
+    ) {
+        this.rideRepository = rideRepository;
+        this.connectionRepository = connectionRepository;
+        this.routeRepository = routeRepository;
+        this.rideProcessedRepository = rideProcessedRepository;
+        this.driverRepository = driverRepository;
+        this.stoppingPointRepository = stoppingPointRepository;
+    }
+
+    public List<Route> planRoutes() {
+        logger.info("Starting a route planning session to distribute rides evenly among all available drivers.");
+        List<Route> newRoutes = new ArrayList<>();
+        List<RideToProcess> rides = rideRepository.findAll();
+        List<Connection> connections = connectionRepository.findAll();
+        List<Driver> drivers = driverRepository.findAll();
+
+        if (drivers.isEmpty()) {
+            logger.warn("No drivers available to plan routes. Skipping route planning.");
+            return newRoutes;
+        }
+
+        if (rides.isEmpty()) {
+            logger.info("No new rides to process. Skipping route planning.");
+            return newRoutes;
+        }
+
+        // create the graph
+        Map<String, Map<String, Integer>> graph = new HashMap<>();
+        for (Connection connection : connections) {
+            graph.computeIfAbsent(connection.start(), k -> new HashMap<>()).put(connection.end(), connection.averageTravelTimeMinutes());
+            graph.computeIfAbsent(connection.end(), k -> new HashMap<>()).put(connection.start(), connection.averageTravelTimeMinutes());
+        }
+
+        // distribute rides among drivers in a round-robin fashion
+        Map<Driver, List<RideToProcess>> driverRides = new HashMap<>();
+        for (Driver value : drivers) {
+            driverRides.put(value, new ArrayList<>());
+        }
+        for (int i = 0; i < rides.size(); i++) {
+            Driver driver = drivers.get(i % drivers.size());
+            driverRides.get(driver).add(rides.get(i));
+        }
+
+        // plan a route for each driver
+        for (Map.Entry<Driver, List<RideToProcess>> entry : driverRides.entrySet()) {
+            Driver driver = entry.getKey();
+            List<RideToProcess> assignedRides = entry.getValue();
+
+            if (assignedRides.isEmpty()) {
+                logger.info("Driver {} has no rides assigned. Skipping.", driver.name());
+                continue;
+            }
+
+            Route plannedRoute = planSingleRouteForDriver(driver, assignedRides, graph);
+            if (plannedRoute != null) {
+                newRoutes.add(plannedRoute);
+                logger.info("Route for driver {} created successfully. Route ID: {}", driver.name(), plannedRoute.id());
+            }
+        }
+
+        logger.info("Route planning completed. Created {} new routes.", newRoutes.size());
+        return newRoutes;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Route planSingleRouteForDriver(Driver driver, List<RideToProcess> rides, Map<String, Map<String, Integer>> graph) {
+        String currentStop = "Central Hub";
+        List<RouteStoppingPoint> RouteStops = new ArrayList<>();
+        List<RideToProcess> ridesToPickUp = new LinkedList<>(rides);
+        List<RideToProcess> passengersInCar = new LinkedList<>();
+        int maxCapacity = driver.passenger();
+
+        // add "Central Hub" as the first stop with no pickups or drop-offs
+        stoppingPointRepository.findByName("Central Hub").ifPresent(sp ->
+                RouteStops.add(new RouteStoppingPoint(sp, new ArrayList<>(), new ArrayList<>()))
+        );
+
+        while (!ridesToPickUp.isEmpty() || !passengersInCar.isEmpty()) {
+            Map<String, Object> nextStopResult = findClosestNextStop(ridesToPickUp, passengersInCar, currentStop, graph, maxCapacity);
+            String nextStopName = (String) nextStopResult.get("nextStopName");
+            RideToProcess associatedRide = (RideToProcess) nextStopResult.get("associatedRide");
+            String stopType = (String) nextStopResult.get("stopType");
+
+            if (nextStopName == null) {
+                logger.info("No reachable pickup or drop-off points found from {}. Terminating route planning for driver {}.", currentStop, driver.name());
+                break;
+            }
+
+            Map<String, Object> pathResult = dijkstra(graph, currentStop, nextStopName);
+            List<String> pathToNextStop = (List<String>) pathResult.get("path");
+
+            if (pathToNextStop == null || pathToNextStop.isEmpty()) {
+                logger.warn("A path could not be found to {}. Skipping.", nextStopName);
+                currentStop = nextStopName; // attempt to continue from the unreachable point
+                continue;
+            }
+
+            // add the path to the route stops
+            for (int i = 1; i < pathToNextStop.size(); i++) {
+                String stopName = pathToNextStop.get(i);
+                stoppingPointRepository.findByName(stopName).ifPresent(point ->
+                        RouteStops.add(new RouteStoppingPoint(point, new ArrayList<>(), new ArrayList<>()))
+                );
+            }
+
+            // get the last stop to add pickups/drop-offs
+            RouteStoppingPoint lastStop = RouteStops.getLast();
+
+            // create a new list for pickups/drop-offs and add the new ride
+            List<String> updatedPickups = new ArrayList<>(lastStop.pickups());
+            List<String> updatedDropOffs = new ArrayList<>(lastStop.dropOffs());
+
+            // update the lists based on the stop type
+            if ("pickup".equals(stopType)) {
+                updatedPickups.add(associatedRide.name());
+                passengersInCar.add(associatedRide);
+                ridesToPickUp.remove(associatedRide);
+            } else if ("dropOff".equals(stopType)) {
+                updatedDropOffs.add(associatedRide.name());
+                passengersInCar.remove(associatedRide);
+            }
+
+            // create a new RouteStoppingPoint record and replace the old one
+            RouteStoppingPoint updatedStop = new RouteStoppingPoint(lastStop.stoppingPoint(), updatedPickups, updatedDropOffs);
+            RouteStops.set(RouteStops.size() - 1, updatedStop);
+
+            // update the current stop for the next iteration
+            currentStop = nextStopName;
+        }
+
+        // plan the final path back to "Central Hub" if the last stop is not Central Hub
+        if (!currentStop.equals("Central Hub")) {
+            Map<String, Object> pathBackToCentralHub = dijkstra(graph, currentStop, "Central Hub");
+            List<String> centralePath = (List<String>) pathBackToCentralHub.get("path");
+            if (centralePath != null) {
+                for (int i = 1; i < centralePath.size(); i++) {
+                    String stopName = centralePath.get(i);
+                    stoppingPointRepository.findByName(stopName).ifPresent(point ->
+                            RouteStops.add(new RouteStoppingPoint(point, new ArrayList<>(), new ArrayList<>()))
+                    );
+                }
+            }
+        }
+
+        // after combining rides, save the final route to get its ID
+        if (RouteStops.isEmpty()) {
+            return null;
+        }
+
+        Route combinedRoute = new Route(null, driver.name(), RouteStatus.PLANNED, RouteStops);
+        Route savedRoute = routeRepository.save(combinedRoute);
+
+        // save processed rides with the correct RouteId
+        List<RideToProcess> allProcessedRides = new LinkedList<>(rides);
+        for (RideToProcess ride : allProcessedRides) {
+            rideRepository.delete(ride);
+            rideProcessedRepository.save(new RideProcessed(ride, savedRoute.id()));
+        }
+
+        return savedRoute;
+    }
+
+    private Map<String, Object> findClosestNextStop(List<RideToProcess> ridesToPickUp, List<RideToProcess> passengersInCar, String currentStop, Map<String, Map<String, Integer>> graph, int maxCapacity) {
+        String closestStopName = null;
+        RideToProcess associatedRide = null;
+        String stopType = null;
+        int minDistance = Integer.MAX_VALUE;
+
+        // check for the closest ride to pick up if there's capacity
+        if (passengersInCar.size() < maxCapacity) {
+            for (RideToProcess ride : ridesToPickUp) {
+                Map<String, Object> result = dijkstra(graph, currentStop, ride.start());
+                Integer distance = (Integer) result.get("time");
+                if (distance != null && distance < minDistance) {
+                    minDistance = distance;
+                    closestStopName = ride.start();
+                    associatedRide = ride;
+                    stopType = "pickup";
+                }
+            }
+        }
+
+        // check for the closest drop-off point
+        for (RideToProcess ride : passengersInCar) {
+            Map<String, Object> result = dijkstra(graph, currentStop, ride.end());
+            Integer distance = (Integer) result.get("time");
+            if (distance != null && distance < minDistance) {
+                minDistance = distance;
+                closestStopName = ride.end();
+                associatedRide = ride;
+                stopType = "dropOff";
+            }
+        }
+
+        Map<String, Object> finalResult = new HashMap<>();
+        finalResult.put("nextStopName", closestStopName);
+        finalResult.put("associatedRide", associatedRide);
+        finalResult.put("stopType", stopType);
+
+        return finalResult;
+    }
+
+    private Map<String, Object> dijkstra(Map<String, Map<String, Integer>> graph, String start, String end) {
+        Map<String, Integer> distances = new HashMap<>();
+        Map<String, String> predecessors = new HashMap<>();
+        Set<String> settled = new HashSet<>();
+        PriorityQueue<String> pq = new PriorityQueue<>(Comparator.comparingInt(distances::get));
+
+        distances.put(start, 0);
+        pq.add(start);
+
+        while (!pq.isEmpty()) {
+            String currentNode = pq.poll();
+
+            if (currentNode.equals(end)) {
+                break; // path found
+            }
+
+            if (settled.contains(currentNode)) {
+                continue;
+            }
+
+            settled.add(currentNode);
+
+            if (graph.containsKey(currentNode)) {
+                for (Map.Entry<String, Integer> neighborEntry : graph.get(currentNode).entrySet()) {
+                    String neighbor = neighborEntry.getKey();
+                    int weight = neighborEntry.getValue();
+                    if (!settled.contains(neighbor)) {
+                        int newDistance = distances.get(currentNode) + weight;
+                        if (newDistance < distances.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                            distances.put(neighbor, newDistance);
+                            predecessors.put(neighbor, currentNode);
+                            pq.add(neighbor);
+                        }
+                    }
+                }
+            }
+        }
+
+        // reconstruct path
+        List<String> path = new LinkedList<>();
+        String step = end;
+        if (predecessors.get(step) == null && !start.equals(end)) {
+            // path not found
+            logger.warn("No path found from {} to {}.", start, end);
+            Map<String, Object> result = new HashMap<>();
+            result.put("path", null);
+            result.put("time", 0);
+            return result;
+        }
+
+        while (step != null) {
+            path.addFirst(step);
+            step = predecessors.get(step);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("path", path);
+        result.put("time", distances.get(end));
+        return result;
+    }
+}

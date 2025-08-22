@@ -15,11 +15,6 @@ public class Server {
         this.routePing = routePing;
     }
 
-    @GetMapping("/")
-    public String handleDefaultRoute() {
-        return "EasyRide Server is running";
-    }
-
     @GetMapping("/ping")
     public Record handlePingRoute() {
         return routePing.getPing();

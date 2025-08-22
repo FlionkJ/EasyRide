@@ -3,7 +3,7 @@ package eu.flionkj.easy_ride.data;
 import eu.flionkj.easy_ride.data.repository.*;
 import eu.flionkj.easy_ride.domain.connection.Connection;
 import eu.flionkj.easy_ride.domain.connection.CreateConnectionRequest;
-import eu.flionkj.easy_ride.domain.customer.AddCustomerRequest;
+import eu.flionkj.easy_ride.domain.customer.RegisterCustomerRequest;
 import eu.flionkj.easy_ride.domain.customer.Customer;
 import eu.flionkj.easy_ride.domain.driver.AddDriverRequest;
 import eu.flionkj.easy_ride.domain.driver.Driver;
@@ -15,8 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 @Service
 public class MongoDB {
@@ -38,21 +36,9 @@ public class MongoDB {
         this.customerRepository = customerRepository;
     }
 
-    public void addRide(CreateRideRequest request) {
-        RideToProcess newRide = new RideToProcess(request.id(), request.start(), request.end());
-
+    public void addRide(CreateRideRequest ride) {
+        RideToProcess newRide = new RideToProcess(ride.id(), ride.start(), ride.end());
         rideRepository.save(newRide);
-        logger.info("Ride successfully saved in MongoDB.");
-    }
-
-    public List<RideToProcess> getRidesAndClear() {
-        List<RideToProcess> rides = rideRepository.findAll();
-
-        rideRepository.deleteAll();
-
-        logger.info("{} Rides successfully deleted in MongoDB.", rides.size());
-
-        return rides;
     }
 
     public void addStop(CreateStoppingPointRequest stoppingPoint) {
@@ -78,9 +64,9 @@ public class MongoDB {
     public void addDriver(AddDriverRequest driver) {
         Driver newDriver = new Driver(driver.name(), driver.passenger());
         driverRepository.save(newDriver);
-    }    
-    
-    public void addCustomer(AddCustomerRequest customer) {
+    }
+
+    public void addCustomer(RegisterCustomerRequest customer) {
         Customer newCustomer = new Customer(customer.name());
         customerRepository.save(newCustomer);
     }
