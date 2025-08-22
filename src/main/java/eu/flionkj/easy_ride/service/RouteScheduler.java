@@ -1,6 +1,6 @@
 package eu.flionkj.easy_ride.service;
 
-import eu.flionkj.easy_ride.domain.ride.Route;
+import eu.flionkj.easy_ride.domain.route.Route;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

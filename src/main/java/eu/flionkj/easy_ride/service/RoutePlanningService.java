@@ -5,9 +5,9 @@ import eu.flionkj.easy_ride.domain.connection.Connection;
 import eu.flionkj.easy_ride.domain.driver.Driver;
 import eu.flionkj.easy_ride.domain.ride.RideProcessed;
 import eu.flionkj.easy_ride.domain.ride.RideToProcess;
-import eu.flionkj.easy_ride.domain.ride.Route;
-import eu.flionkj.easy_ride.domain.ride.RouteStatus;
-import eu.flionkj.easy_ride.domain.ride.RouteStoppingPoint;
+import eu.flionkj.easy_ride.domain.route.Route;
+import eu.flionkj.easy_ride.domain.route.RouteStatus;
+import eu.flionkj.easy_ride.domain.route.RouteStoppingPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,14 +84,14 @@ public class RoutePlanningService {
             List<RideToProcess> assignedRides = entry.getValue();
 
             if (assignedRides.isEmpty()) {
-                logger.info("Driver {} has no rides assigned. Skipping.", driver.name());
+                logger.info("Driver {} has no rides assigned. Skipping.", driver.id());
                 continue;
             }
 
             Route plannedRoute = planSingleRouteForDriver(driver, assignedRides, graph);
             if (plannedRoute != null) {
                 newRoutes.add(plannedRoute);
-                logger.info("Route for driver {} created successfully. Route ID: {}", driver.name(), plannedRoute.id());
+                logger.info("Route for driver {} created successfully. Route ID: {}", driver.id(), plannedRoute.id());
             }
         }
 
@@ -119,7 +119,7 @@ public class RoutePlanningService {
             String stopType = (String) nextStopResult.get("stopType");
 
             if (nextStopName == null) {
-                logger.info("No reachable pickup or drop-off points found from {}. Terminating route planning for driver {}.", currentStop, driver.name());
+                logger.info("No reachable pickup or drop-off points found from {}. Terminating route planning for driver {}.", currentStop, driver.id());
                 break;
             }
 
@@ -184,7 +184,7 @@ public class RoutePlanningService {
             return null;
         }
 
-        Route combinedRoute = new Route(null, driver.name(), RouteStatus.PLANNED, RouteStops);
+        Route combinedRoute = new Route(null, driver.id(), RouteStatus.PLANNED, RouteStops);
         Route savedRoute = routeRepository.save(combinedRoute);
 
         // save processed rides with the correct RouteId

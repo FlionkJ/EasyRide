@@ -35,11 +35,11 @@ public class RouteCustomer {
             case START_IS_EMPTY ->
                     new ResponseEntity<>(new DefaultResponse("Start cannot be empty."), HttpStatus.BAD_REQUEST);
             case START_POINT_NOT_FOUND ->
-                    new ResponseEntity<>(new DefaultResponse("Start point not found."), HttpStatus.BAD_REQUEST);
+                    new ResponseEntity<>(new DefaultResponse("Start point not found."), HttpStatus.NOT_FOUND);
             case END_IS_EMPTY ->
                     new ResponseEntity<>(new DefaultResponse("End cannot be empty."), HttpStatus.BAD_REQUEST);
             case END_POINT_NOT_FOUND ->
-                    new ResponseEntity<>(new DefaultResponse("End point not found."), HttpStatus.BAD_REQUEST);
+                    new ResponseEntity<>(new DefaultResponse("End point not found."), HttpStatus.NOT_FOUND);
             case CREATED_SUCCESSFULLY ->
                     new ResponseEntity<>(new DefaultResponse("Ride created successfully."), HttpStatus.CREATED);
 

@@ -126,7 +126,7 @@ public class CreatingTestData implements CommandLineRunner {
         for (int i = 1; i <= NUMBER_OF_DRIVERS; i++) {
             String driverName = "Driver " + i;
             int capacity = MIN_CAPACITY + random.nextInt(MAX_CAPACITY);
-            driverRepository.save(new Driver(driverName, capacity));
+            driverRepository.save(new Driver(null, driverName, capacity));
         }
         logger.info("Created {} test drivers with varying capacities.", NUMBER_OF_DRIVERS);
 

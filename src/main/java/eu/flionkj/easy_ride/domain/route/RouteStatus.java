@@ -1,4 +1,4 @@
-package eu.flionkj.easy_ride.domain.ride;
+package eu.flionkj.easy_ride.domain.route;
 
 public enum RouteStatus {
     PLANNED,

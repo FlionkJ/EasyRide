@@ -1,4 +1,4 @@
-package eu.flionkj.easy_ride.domain.ride;
+package eu.flionkj.easy_ride.domain.route;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
