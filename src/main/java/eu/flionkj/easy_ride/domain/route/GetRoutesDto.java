@@ -2,7 +2,7 @@ package eu.flionkj.easy_ride.domain.route;
 
 import java.util.List;
 
-public record GetRoutesResponseDto(
+public record GetRoutesDto(
         GetRoutesResult status,
         List<Route> routes
 ) {

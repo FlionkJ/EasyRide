@@ -11,6 +11,7 @@ import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.ride.RideToProcess;
 import eu.flionkj.easy_ride.domain.route.Route;
 import eu.flionkj.easy_ride.domain.route.RouteStatus;
+import eu.flionkj.easy_ride.domain.route.RouteStoppingPoint;
 import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointRequest;
 import eu.flionkj.easy_ride.domain.stopping_points.StoppingPoint;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,14 +92,14 @@ public class MongoDB {
     }
 
     public void updateRouteStatus(String routeId, RouteStatus newStatus) {
-        Optional<Route> route = routeRepository.findById(routeId);
+        Optional<Route> optionalRoute = routeRepository.findById(routeId);
 
-        if (route.isEmpty()) {
+        if (optionalRoute.isEmpty()) {
             logger.warn("Route with ID {} not found. Cannot update status.", routeId);
             return;
         }
 
-        Route existingRoute = route.get();
+        Route existingRoute = optionalRoute.get();
 
         Route updatedRoute = new Route(
                 existingRoute.id(),
@@ -109,5 +110,21 @@ public class MongoDB {
 
         routeRepository.save(updatedRoute);
         logger.info("Route with ID {} status updated to {}.", routeId, newStatus);
+    }
+
+    public Optional<RouteStoppingPoint> findFirstStoppingPointOfRoute(String tripId) {
+        Optional<Route> optionalRoute = routeRepository.findById(tripId);
+
+        if (optionalRoute.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Route route = optionalRoute.get();
+
+        if (route.plannedStops().isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(route.plannedStops().getFirst());
     }
 }

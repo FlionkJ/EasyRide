@@ -5,6 +5,7 @@ import eu.flionkj.easy_ride.domain.route.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DriverService {
@@ -15,32 +16,47 @@ public class DriverService {
         this.db = db;
     }
 
-    public GetRoutesResponseDto getRoutes(String driverId) {
+    public GetRoutesDto getRoutes(String driverId) {
         // validate request
         if (driverId == null || driverId.isBlank()) {
-            return new GetRoutesResponseDto(GetRoutesResult.DRIVER_IS_EMPTY, null);
+            return new GetRoutesDto(GetRoutesResult.DRIVER_IS_EMPTY, null);
         }
 
         if (!db.doesDriverExist(driverId)) {
-            return new GetRoutesResponseDto(GetRoutesResult.DRIVER_NOT_FOUND, null);
+            return new GetRoutesDto(GetRoutesResult.DRIVER_NOT_FOUND, null);
         }
 
         List<Route> routes = db.getRoutesByDriverId(driverId);
 
-        return new GetRoutesResponseDto(GetRoutesResult.SUCCESS, routes);
+        return new GetRoutesDto(GetRoutesResult.SUCCESS, routes);
     }
 
-    public UpdateRouteResult updateRouteResult(String routeId, RouteStatus newStatus) {
+    public UpdateRouteStatusResult updateRouteResult(String routeId, RouteStatus newStatus) {
         // validate request
         if (routeId == null || routeId.isBlank()) {
-            return UpdateRouteResult.ROUTE_ID_IS_EMPTY;
+            return UpdateRouteStatusResult.ROUTE_ID_IS_EMPTY;
         }
 
         if (!db.doesRouteExist(routeId)) {
-            return UpdateRouteResult.ROUTE_ID_NOT_FOUND;
+            return UpdateRouteStatusResult.ROUTE_ID_NOT_FOUND;
         }
 
         db.updateRouteStatus(routeId, newStatus);
-        return UpdateRouteResult.UPDATE_STATUS;
+        return UpdateRouteStatusResult.UPDATE_STATUS;
+    }
+
+    public ReachedRouteStopDto reachedRouteStop(String routeId) {
+        // validate request
+        if (routeId == null || routeId.isBlank()) {
+            return new ReachedRouteStopDto(ReachedRouteStopResult.ROUTE_ID_IS_EMPTY, null);
+        }
+
+        if (!db.doesRouteExist(routeId)) {
+            return new ReachedRouteStopDto(ReachedRouteStopResult.ROUTE_ID_NOT_FOUND, null);
+        }
+
+        Optional<RouteStoppingPoint> currentStoppingPoint = db.findFirstStoppingPointOfRoute(routeId);
+
+        return currentStoppingPoint.map(routeStoppingPoint -> new ReachedRouteStopDto(ReachedRouteStopResult.SUCCESS, routeStoppingPoint)).orElseGet(() -> new ReachedRouteStopDto(ReachedRouteStopResult.DB_ERROR, null));
     }
 }
