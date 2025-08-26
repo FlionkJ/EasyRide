@@ -22,4 +22,3 @@ secrets:
     file: ../secrets/mongodb_root_password
   mongodb_root_username:
     file: ../secrets/mongodb_root_username
-

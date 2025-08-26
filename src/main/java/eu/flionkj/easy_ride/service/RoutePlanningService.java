@@ -8,6 +8,7 @@ import eu.flionkj.easy_ride.domain.ride.RideToProcess;
 import eu.flionkj.easy_ride.domain.route.Route;
 import eu.flionkj.easy_ride.domain.route.RouteStatus;
 import eu.flionkj.easy_ride.domain.route.RouteStoppingPoint;
+import eu.flionkj.easy_ride.domain.route.RouteStoppingStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,7 +110,7 @@ public class RoutePlanningService {
 
         // add "Central Hub" as the first stop with no pickups or drop-offs
         stoppingPointRepository.findByName("Central Hub").ifPresent(sp ->
-                RouteStops.add(new RouteStoppingPoint(sp, new ArrayList<>(), new ArrayList<>()))
+                RouteStops.add(new RouteStoppingPoint(sp, RouteStoppingStatus.NOT_REACHED, new ArrayList<>(), new ArrayList<>()))
         );
 
         while (!ridesToPickUp.isEmpty() || !passengersInCar.isEmpty()) {
@@ -136,7 +137,7 @@ public class RoutePlanningService {
             for (int i = 1; i < pathToNextStop.size(); i++) {
                 String stopName = pathToNextStop.get(i);
                 stoppingPointRepository.findByName(stopName).ifPresent(point ->
-                        RouteStops.add(new RouteStoppingPoint(point, new ArrayList<>(), new ArrayList<>()))
+                        RouteStops.add(new RouteStoppingPoint(point, RouteStoppingStatus.NOT_REACHED, new ArrayList<>(), new ArrayList<>()))
                 );
             }
 
@@ -158,7 +159,7 @@ public class RoutePlanningService {
             }
 
             // create a new RouteStoppingPoint record and replace the old one
-            RouteStoppingPoint updatedStop = new RouteStoppingPoint(lastStop.stoppingPoint(), updatedPickups, updatedDropOffs);
+            RouteStoppingPoint updatedStop = new RouteStoppingPoint(lastStop.stoppingPoint(), RouteStoppingStatus.NOT_REACHED, updatedPickups, updatedDropOffs);
             RouteStops.set(RouteStops.size() - 1, updatedStop);
 
             // update the current stop for the next iteration
@@ -173,7 +174,7 @@ public class RoutePlanningService {
                 for (int i = 1; i < centralePath.size(); i++) {
                     String stopName = centralePath.get(i);
                     stoppingPointRepository.findByName(stopName).ifPresent(point ->
-                            RouteStops.add(new RouteStoppingPoint(point, new ArrayList<>(), new ArrayList<>()))
+                            RouteStops.add(new RouteStoppingPoint(point, RouteStoppingStatus.NOT_REACHED, new ArrayList<>(), new ArrayList<>()))
                     );
                 }
             }

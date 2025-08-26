@@ -6,6 +6,7 @@ import java.util.List;
 
 public record RouteStoppingPoint(
         StoppingPoint stoppingPoint,
+        RouteStoppingStatus StoppingPointStatus,
         List<String> pickups,
         List<String> dropOffs
 ) {

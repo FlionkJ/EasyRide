@@ -12,6 +12,7 @@ import eu.flionkj.easy_ride.domain.ride.RideToProcess;
 import eu.flionkj.easy_ride.domain.route.Route;
 import eu.flionkj.easy_ride.domain.route.RouteStatus;
 import eu.flionkj.easy_ride.domain.route.RouteStoppingPoint;
+import eu.flionkj.easy_ride.domain.route.RouteStoppingStatus;
 import eu.flionkj.easy_ride.domain.stopping_points.CreateStoppingPointRequest;
 import eu.flionkj.easy_ride.domain.stopping_points.StoppingPoint;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -112,19 +114,54 @@ public class MongoDB {
         logger.info("Route with ID {} status updated to {}.", routeId, newStatus);
     }
 
-    public Optional<RouteStoppingPoint> findFirstStoppingPointOfRoute(String tripId) {
-        Optional<Route> optionalRoute = routeRepository.findById(tripId);
+    public Optional<RouteStoppingPoint> findFirstStoppingPointOfRoute(String routeId) {
+        Optional<Route> optionalRoute = routeRepository.findById(routeId);
 
         if (optionalRoute.isEmpty()) {
+            logger.warn("Route with ID {} not found.", routeId);
             return Optional.empty();
         }
 
         Route route = optionalRoute.get();
+        List<RouteStoppingPoint> plannedStops = route.plannedStops();
 
-        if (route.plannedStops().isEmpty()) {
+        if (plannedStops.isEmpty()) {
+            logger.warn("Route with ID {} has no planned stops.", routeId);
             return Optional.empty();
         }
 
-        return Optional.of(route.plannedStops().getFirst());
+        // iterate through the stops to find the first one that is NOT_REACHED
+        for (int idx = 0; idx < plannedStops.size(); idx++) {
+            RouteStoppingPoint currentStop = plannedStops.get(idx);
+
+            if (currentStop.StoppingPointStatus() == RouteStoppingStatus.NOT_REACHED) {
+
+                // create a new list with the updated status for the found stop
+                List<RouteStoppingPoint> updatedStops = new ArrayList<>(plannedStops);
+                RouteStoppingPoint updatedStop = new RouteStoppingPoint(
+                        currentStop.stoppingPoint(),
+                        RouteStoppingStatus.REACHED,
+                        currentStop.pickups(),
+                        currentStop.dropOffs()
+                );
+                updatedStops.set(idx, updatedStop);
+
+                // create a new Route object with the updated stops and save it
+                Route updatedRoute = new Route(
+                        route.id(),
+                        route.driverId(),
+                        route.status(),
+                        updatedStops
+                );
+                routeRepository.save(updatedRoute);
+
+                logger.info("Updated route {} and marked stop {} as reached.", route.id(), updatedStop.stoppingPoint().name());
+                return Optional.of(updatedStop);
+            }
+        }
+
+        // if no unreached stop is found, return empty
+        logger.info("No unreached stops found for route {}.", routeId);
+        return Optional.empty();
     }
 }
