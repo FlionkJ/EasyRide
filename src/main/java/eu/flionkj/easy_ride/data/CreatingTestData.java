@@ -41,7 +41,7 @@ public class CreatingTestData implements CommandLineRunner {
     // repositories for database interaction
     private final StoppingPointRepository stoppingPointRepository;
     private final ConnectionRepository connectionRepository;
-    private final RideRepository rideRepository;
+    private final RideToProcessRepository rideToProcessRepository;
     private final DriverRepository driverRepository;
     private final CustomerRepository customerRepository;
     private final RouteRepository routeRepository;
@@ -54,14 +54,14 @@ public class CreatingTestData implements CommandLineRunner {
     public CreatingTestData(
             StoppingPointRepository stoppingPointRepository,
             ConnectionRepository connectionRepository,
-            RideRepository rideRepository,
+            RideToProcessRepository rideToProcessRepository,
             DriverRepository driverRepository,
             CustomerRepository customerRepository, RouteRepository routeRepository, RideProcessedRepository rideProcessedRepository,
             RoutePlanningService routePlanningService
     ) {
         this.stoppingPointRepository = stoppingPointRepository;
         this.connectionRepository = connectionRepository;
-        this.rideRepository = rideRepository;
+        this.rideToProcessRepository = rideToProcessRepository;
         this.driverRepository = driverRepository;
         this.customerRepository = customerRepository;
         this.routeRepository = routeRepository;
@@ -76,7 +76,7 @@ public class CreatingTestData implements CommandLineRunner {
         // delete all old data from all repositories to ensure a clean slate
         stoppingPointRepository.deleteAll();
         connectionRepository.deleteAll();
-        rideRepository.deleteAll();
+        rideToProcessRepository.deleteAll();
         driverRepository.deleteAll();
         customerRepository.deleteAll();
         rideProcessedRepository.deleteAll();
@@ -133,7 +133,10 @@ public class CreatingTestData implements CommandLineRunner {
         // create a defined number of customers and their rides
         for (int i = 1; i <= NUMBER_OF_CUSTOMERS; i++) {
             String customerName = "Customer " + i;
-            customerRepository.save(new Customer(customerName));
+
+            // create and save the Customer, then get the saved object with the ID
+            Customer savedCustomer = customerRepository.save(new Customer(customerName));
+            String customerId = savedCustomer.id();
 
             String startPoint, endPoint;
             // ensure that rides do not start or end at 'Central Hub' and are not self-loops
@@ -142,7 +145,8 @@ public class CreatingTestData implements CommandLineRunner {
                 endPoint = stoppingPointNames.get(random.nextInt(stoppingPointNames.size()));
             } while (startPoint.equals(endPoint) || startPoint.equals(centralHub) || endPoint.equals(centralHub));
 
-            rideRepository.save(new RideToProcess(customerName, startPoint, endPoint));
+            // use the retrieved customerId to create the RideToProcess object
+            rideToProcessRepository.save(new RideToProcess(customerId, startPoint, endPoint));
         }
         logger.info("Created {} test customers and their rides.", NUMBER_OF_CUSTOMERS);
 

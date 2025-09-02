@@ -7,11 +7,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public record RideToProcess(
         @Id
         String id,
-        String name,
+        String customerId,
         String start,
         String end
 ) {
-    public RideToProcess(String name, String start, String end) {
-        this(null, name, start, end);
+    public RideToProcess(String customerId, String start, String end) {
+        this(null, customerId, start, end);
     }
 }

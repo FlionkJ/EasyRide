@@ -8,6 +8,7 @@ import eu.flionkj.easy_ride.domain.customer.Customer;
 import eu.flionkj.easy_ride.domain.driver.AddDriverRequest;
 import eu.flionkj.easy_ride.domain.driver.Driver;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
+import eu.flionkj.easy_ride.domain.ride.RideProcessed;
 import eu.flionkj.easy_ride.domain.ride.RideToProcess;
 import eu.flionkj.easy_ride.domain.route.Route;
 import eu.flionkj.easy_ride.domain.route.RouteStatus;
@@ -29,7 +30,8 @@ public class MongoDB {
 
     private static final Logger logger = LoggerFactory.getLogger(MongoDB.class);
 
-    private final RideRepository rideRepository;
+    private final RideToProcessRepository rideToProcessRepository;
+    private final RideProcessedRepository rideProcessedRepository;
     private final StoppingPointRepository stoppingPointRepository;
     private final ConnectionRepository connectionRepository;
     private final DriverRepository driverRepository;
@@ -37,8 +39,9 @@ public class MongoDB {
     private final RouteRepository routeRepository;
 
     @Autowired
-    public MongoDB(RideRepository rideRepository, StoppingPointRepository stoppingPointRepository, ConnectionRepository connectionRepository, DriverRepository driverRepository, CustomerRepository customerRepository, RouteRepository routeRepository) {
-        this.rideRepository = rideRepository;
+    public MongoDB(RideToProcessRepository rideToProcessRepository, RideProcessedRepository rideProcessedRepository, StoppingPointRepository stoppingPointRepository, ConnectionRepository connectionRepository, DriverRepository driverRepository, CustomerRepository customerRepository, RouteRepository routeRepository) {
+        this.rideToProcessRepository = rideToProcessRepository;
+        this.rideProcessedRepository = rideProcessedRepository;
         this.stoppingPointRepository = stoppingPointRepository;
         this.connectionRepository = connectionRepository;
         this.driverRepository = driverRepository;
@@ -48,7 +51,12 @@ public class MongoDB {
 
     public void addRide(CreateRideRequest ride) {
         RideToProcess newRide = new RideToProcess(ride.id(), ride.start(), ride.end());
-        rideRepository.save(newRide);
+        rideToProcessRepository.save(newRide);
+    }
+
+    public Optional<RideProcessed> findProcessedRideById(String customerId) {
+        logger.info("Searching for processed ride with customerID: {}", customerId);
+        return rideProcessedRepository.findByCustomerId(customerId);
     }
 
     public void addStop(CreateStoppingPointRequest stoppingPoint) {
@@ -80,9 +88,14 @@ public class MongoDB {
         return driverRepository.existsById(driverId);
     }
 
-    public void addCustomer(RegisterCustomerRequest customer) {
+    public String addCustomer(RegisterCustomerRequest customer) {
         Customer newCustomer = new Customer(customer.name());
-        customerRepository.save(newCustomer);
+        Customer savedCustomer = customerRepository.save(newCustomer);
+        return savedCustomer.name();
+    }
+
+    public boolean doesCustomerExist(String customerId) {
+        return customerRepository.existsById(customerId);
     }
 
     public List<Route> getRoutesByDriverId(String driverId) {

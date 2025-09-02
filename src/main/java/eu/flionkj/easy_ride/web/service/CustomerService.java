@@ -1,19 +1,28 @@
 package eu.flionkj.easy_ride.web.service;
 
 import eu.flionkj.easy_ride.data.MongoDB;
+import eu.flionkj.easy_ride.domain.customer.GetPickupWaitTimeResult;
+import eu.flionkj.easy_ride.domain.customer.RegisterCustomerDto;
 import eu.flionkj.easy_ride.domain.customer.RegisterCustomerRequest;
 import eu.flionkj.easy_ride.domain.customer.RegisterCustomerResult;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.ride.CreateRideResult;
+import eu.flionkj.easy_ride.domain.ride.RideProcessed;
+import eu.flionkj.easy_ride.service.RoutePlanningService;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 public class CustomerService {
 
     private final MongoDB db;
+    private final RoutePlanningService routePlanningService;
 
-    public CustomerService(MongoDB db) {
+    public CustomerService(MongoDB db, RoutePlanningService routePlanningService) {
         this.db = db;
+        this.routePlanningService = routePlanningService;
     }
 
     public CreateRideResult createRide(CreateRideRequest request) {
@@ -36,18 +45,42 @@ public class CustomerService {
             return CreateRideResult.END_POINT_NOT_FOUND;
         }
 
+        // check if customer exists
+        if (!db.doesCustomerExist(request.id())) {
+            return CreateRideResult.ID_NOT_FOUND;
+        }
+
         db.addRide(request);
         return CreateRideResult.CREATED_SUCCESSFULLY;
     }
 
-    public RegisterCustomerResult registerCustomer(RegisterCustomerRequest request) {
+    public RegisterCustomerDto registerCustomer(RegisterCustomerRequest request) {
         // validate request
         if (request.name() == null || request.name().isEmpty()) {
-            return RegisterCustomerResult.NAME_IS_EMPTY;
+            return new RegisterCustomerDto(RegisterCustomerResult.NAME_IS_EMPTY, null);
         }
 
-        db.addCustomer(request);
-        return RegisterCustomerResult.CREATED_SUCCESSFULLY;
+        String customerId = db.addCustomer(request);
+        return new RegisterCustomerDto(RegisterCustomerResult.CREATED_SUCCESSFULLY, customerId);
+    }
+
+    public Pair<GetPickupWaitTimeResult, Optional<Integer>> getPickupWaitTime(String customerId) {
+        if (customerId == null || customerId.isEmpty()) {
+            return Pair.of(GetPickupWaitTimeResult.ID_IS_EMPTY, Optional.empty());
+        }
+        if (!db.doesCustomerExist(customerId)) {
+            return Pair.of(GetPickupWaitTimeResult.ID_NOT_FOUND, Optional.empty());
+        }
+        Optional<RideProcessed> foundCustomerRide = db.findProcessedRideById(customerId);
+        RideProcessed curCustomerRide = foundCustomerRide.orElse(null);
+        if  (curCustomerRide == null) {
+            return Pair.of(GetPickupWaitTimeResult.DB_ERROR, Optional.empty());
+        }
+        return Pair.of(GetPickupWaitTimeResult.SUCCESS , Optional.of(routePlanningService.getRoutePickupWaitTime(curCustomerRide)));
+    }
+
+    public Optional<Integer> getDropOffWaitTime() {
+        return Optional.empty();
     }
 
 }
