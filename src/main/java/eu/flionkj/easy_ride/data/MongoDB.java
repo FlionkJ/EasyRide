@@ -127,6 +127,16 @@ public class MongoDB {
         logger.info("Route with ID {} status updated to {}.", routeId, newStatus);
     }
 
+    public boolean doesRouteStarted(String routeId) {
+        Optional<Route> route = routeRepository.findById(routeId);
+        return route.isPresent() && route.get().status() == RouteStatus.IN_PROGRESS;
+    }
+
+    public RouteStatus getRouteStatus(String routeId) {
+        Optional<Route> route = routeRepository.findById(routeId);
+        return route.map(Route::status).orElse(null);
+    }
+
     public Optional<RouteStoppingPoint> findFirstStoppingPointOfRoute(String routeId) {
         Optional<Route> optionalRoute = routeRepository.findById(routeId);
 

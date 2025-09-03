@@ -338,4 +338,84 @@ public class RoutePlanningService {
         logger.warn("Pickup location '{}' for ride ID {} was not found on route ID {}.", pickupLocation, rideId, ride.RouteId());
         return -1;
     }
+
+    public int getRouteDropOffWaitTime(RideProcessed ride) {
+        // find the existing planned route
+        Optional<Route> routeOptional = routeRepository.findById(ride.RouteId());
+        if (routeOptional.isEmpty()) {
+            logger.warn("Route with ID {} not found.", ride.RouteId());
+            return -1;
+        }
+        Route route = routeOptional.get();
+
+        String rideId = ride.id();
+        String customerDestination = ride.end();
+
+        // retrieve connections to build the graph
+        List<Connection> connections = connectionRepository.findAll();
+        Map<String, Map<String, Integer>> graph = new HashMap<>();
+        for (Connection connection : connections) {
+            graph.computeIfAbsent(connection.start(), k -> new HashMap<>()).put(connection.end(), connection.averageTravelTimeMinutes());
+            graph.computeIfAbsent(connection.end(), k -> new HashMap<>()).put(connection.start(), connection.averageTravelTimeMinutes());
+        }
+
+        int totalTime = 0;
+        String previousStop = null;
+        boolean pastCurrentStop = false;
+
+        // iterate through the planned stops to find the one that has been 'REACHED'
+        for (RouteStoppingPoint stop : route.plannedStops()) {
+            String currentRouteStop = stop.stoppingPoint().name();
+
+            if (!pastCurrentStop && stop.StoppingPointStatus() == RouteStoppingStatus.REACHED) {
+                // we've found the current stop, start calculating from the next stop
+                pastCurrentStop = true;
+                previousStop = currentRouteStop;
+                continue;
+            }
+
+            if (pastCurrentStop) {
+                if (previousStop != null) {
+                    Map<String, Object> pathResult = dijkstra(graph, previousStop, currentRouteStop);
+                    Integer travelTime = (Integer) pathResult.get("time");
+                    if (travelTime != null) {
+                        totalTime += travelTime;
+                    } else {
+                        logger.warn("Path not found from {} to {}. Cannot calculate total time.", previousStop, currentRouteStop);
+                        return -1;
+                    }
+                }
+
+                if (currentRouteStop.equals(customerDestination)) {
+                    logger.info("Estimated travel time from current stop '{}' to destination '{}' for ride ID {} is {} minutes.",
+                            previousStop, customerDestination, rideId, totalTime);
+                    return totalTime;
+                }
+                previousStop = currentRouteStop;
+            }
+        }
+
+        // handle cases where the current stop was not found or the destination is not on the route after the current stop
+        if (!pastCurrentStop) {
+            logger.warn("No 'REACHED' stop found on route {}. Cannot calculate travel time.", ride.RouteId());
+        } else {
+            logger.warn("Destination '{}' for ride ID {} was not found on route ID {} after the current stop.", customerDestination, rideId, ride.RouteId());
+        }
+        return -1;
+    }
+
+    public boolean hasCustomerBeenPickedUp(RideProcessed ride) {
+        @SuppressWarnings("OptionalGetWithoutIsPresent") List<RouteStoppingPoint> plannedStops = routeRepository.findById(ride.RouteId()).get().plannedStops();
+        // iterate through all the planned stopping points
+        for (RouteStoppingPoint stop : plannedStops) {
+            // check if the stop's status indicates a pickup has occurred AND
+            // if the specific customer is in the list of pickups for this stop.
+            if (stop.StoppingPointStatus() == RouteStoppingStatus.REACHED && stop.pickups().contains(ride.customerId())) {
+                System.out.println("Customer with ID '" + ride.customerId() + "' was found at a stop with status ALREADY_PICKED_UP.");
+                return true; // found the customer, no need to check further
+            }
+        }
+        // if the loop completes without finding the customer, they have not been picked up yet.
+        return false;
+    }
 }

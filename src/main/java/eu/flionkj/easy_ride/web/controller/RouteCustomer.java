@@ -61,13 +61,17 @@ public class RouteCustomer {
 
     @GetMapping("/pickupWaitTime")
     public ResponseEntity<DefaultResponse> pickupWaitTime(@RequestParam String customerId) {
-        Pair<GetPickupWaitTimeResult, Optional<Integer>> waitTime = customerService.getPickupWaitTime(customerId);
+        Pair<WaitTimeResult, Optional<Integer>> waitTime = customerService.getWaitTime(customerId, WaitTime.PICKUP);
         return switch (waitTime.getFirst()) {
+            //noinspection DuplicatedCode
             case ID_IS_EMPTY ->
                     new ResponseEntity<>(new DefaultResponse("ID cannot be empty."), HttpStatus.BAD_REQUEST);
             case ID_NOT_FOUND -> new ResponseEntity<>(new DefaultResponse("ID not found."), HttpStatus.NOT_FOUND);
             case NO_RIDE_FOUND ->  new ResponseEntity<>(new DefaultResponse("No ride found."), HttpStatus.NOT_FOUND);
             case DB_ERROR -> new ResponseEntity<>(new DefaultResponse("Database error."), HttpStatus.INTERNAL_SERVER_ERROR);
+            case ALREADY_PICKED_UP ->   new ResponseEntity<>(new DefaultResponse("You are already in the vehicle."), HttpStatus.BAD_REQUEST);
+            case WAITING_FOR_PICKUP -> null; // is not thrown by the service
+            case ROUTE_NOT_STARTED -> new ResponseEntity<>(new DefaultResponse("Route not started."), HttpStatus.BAD_REQUEST);
             case SUCCESS ->
                 //noinspection OptionalGetWithoutIsPresent
                     new ResponseEntity<>(new DefaultResponse("Pickup wait time is: " + waitTime.getSecond().get()), HttpStatus.OK);
@@ -75,8 +79,21 @@ public class RouteCustomer {
     }
 
     @GetMapping("/dropOffWaitTime")
-    public ResponseEntity<DefaultResponse> dropOffWaitTime() {
-        Optional<Integer> waitTime = customerService.getDropOffWaitTime();
-        return waitTime.map(integer -> new ResponseEntity<>(new DefaultResponse("Drop off wait time is: " + integer), HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(new DefaultResponse("No drop off wait time found."), HttpStatus.OK));
+    public ResponseEntity<DefaultResponse> dropOffWaitTime(@RequestParam String customerId) {
+        Pair<WaitTimeResult, Optional<Integer>> waitTime = customerService.getWaitTime(customerId, WaitTime.DROP_OFF);
+        return switch (waitTime.getFirst()) {
+            //noinspection DuplicatedCode
+            case ID_IS_EMPTY ->
+                    new ResponseEntity<>(new DefaultResponse("ID cannot be empty."), HttpStatus.BAD_REQUEST);
+            case ID_NOT_FOUND -> new ResponseEntity<>(new DefaultResponse("ID not found."), HttpStatus.NOT_FOUND);
+            case NO_RIDE_FOUND ->  new ResponseEntity<>(new DefaultResponse("No ride found."), HttpStatus.NOT_FOUND);
+            case DB_ERROR -> new ResponseEntity<>(new DefaultResponse("Database error."), HttpStatus.INTERNAL_SERVER_ERROR);
+            case ALREADY_PICKED_UP -> null; //is not thrown by the service
+            case WAITING_FOR_PICKUP -> new ResponseEntity<>(new DefaultResponse("You are waiting for the vehicle."), HttpStatus.BAD_REQUEST);
+            case ROUTE_NOT_STARTED -> new ResponseEntity<>(new DefaultResponse("Route not started."), HttpStatus.BAD_REQUEST);
+            case SUCCESS ->
+                //noinspection OptionalGetWithoutIsPresent
+                    new ResponseEntity<>(new DefaultResponse("Drop Off wait time is: " + waitTime.getSecond().get()), HttpStatus.OK);
+        };
     }
 }

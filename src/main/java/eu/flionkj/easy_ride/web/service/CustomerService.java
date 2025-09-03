@@ -1,13 +1,11 @@
 package eu.flionkj.easy_ride.web.service;
 
 import eu.flionkj.easy_ride.data.MongoDB;
-import eu.flionkj.easy_ride.domain.customer.GetPickupWaitTimeResult;
-import eu.flionkj.easy_ride.domain.customer.RegisterCustomerDto;
-import eu.flionkj.easy_ride.domain.customer.RegisterCustomerRequest;
-import eu.flionkj.easy_ride.domain.customer.RegisterCustomerResult;
+import eu.flionkj.easy_ride.domain.customer.*;
 import eu.flionkj.easy_ride.domain.ride.CreateRideRequest;
 import eu.flionkj.easy_ride.domain.ride.CreateRideResult;
 import eu.flionkj.easy_ride.domain.ride.RideProcessed;
+import eu.flionkj.easy_ride.domain.route.RouteStatus;
 import eu.flionkj.easy_ride.service.RoutePlanningService;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
@@ -64,23 +62,35 @@ public class CustomerService {
         return new RegisterCustomerDto(RegisterCustomerResult.CREATED_SUCCESSFULLY, customerId);
     }
 
-    public Pair<GetPickupWaitTimeResult, Optional<Integer>> getPickupWaitTime(String customerId) {
+    public Pair<WaitTimeResult, Optional<Integer>> getWaitTime(String customerId, WaitTime reqestType) {
         if (customerId == null || customerId.isEmpty()) {
-            return Pair.of(GetPickupWaitTimeResult.ID_IS_EMPTY, Optional.empty());
+            return Pair.of(WaitTimeResult.ID_IS_EMPTY, Optional.empty());
         }
         if (!db.doesCustomerExist(customerId)) {
-            return Pair.of(GetPickupWaitTimeResult.ID_NOT_FOUND, Optional.empty());
+            return Pair.of(WaitTimeResult.ID_NOT_FOUND, Optional.empty());
         }
         Optional<RideProcessed> foundCustomerRide = db.findProcessedRideById(customerId);
         RideProcessed curCustomerRide = foundCustomerRide.orElse(null);
-        if  (curCustomerRide == null) {
-            return Pair.of(GetPickupWaitTimeResult.DB_ERROR, Optional.empty());
+        if (curCustomerRide == null) {
+            return Pair.of(WaitTimeResult.DB_ERROR, Optional.empty());
         }
-        return Pair.of(GetPickupWaitTimeResult.SUCCESS , Optional.of(routePlanningService.getRoutePickupWaitTime(curCustomerRide)));
-    }
+        if (db.getRouteStatus(curCustomerRide.RouteId()) == RouteStatus.PLANNED) {
+            return Pair.of(WaitTimeResult.ROUTE_NOT_STARTED, Optional.empty());
+        }
 
-    public Optional<Integer> getDropOffWaitTime() {
-        return Optional.empty();
+        return switch (reqestType) {
+            case PICKUP -> {
+                if (routePlanningService.hasCustomerBeenPickedUp(curCustomerRide)) {
+                    yield Pair.of(WaitTimeResult.ALREADY_PICKED_UP, Optional.empty());
+                }
+                yield Pair.of(WaitTimeResult.SUCCESS, Optional.of(routePlanningService.getRoutePickupWaitTime(curCustomerRide)));
+            }
+            case DROP_OFF -> {
+                if (!routePlanningService.hasCustomerBeenPickedUp(curCustomerRide)) {
+                    yield Pair.of(WaitTimeResult.WAITING_FOR_PICKUP, Optional.empty());
+                }
+                yield Pair.of(WaitTimeResult.SUCCESS, Optional.of(routePlanningService.getRouteDropOffWaitTime(curCustomerRide)));
+            }
+        };
     }
-
 }

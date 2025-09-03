@@ -55,6 +55,10 @@ public class DriverService {
             return new ReachedRouteStopDto(ReachedRouteStopResult.ROUTE_ID_NOT_FOUND, null);
         }
 
+        if (!db.doesRouteStarted(routeId)) {
+            db.updateRouteStatus(routeId, RouteStatus.IN_PROGRESS);
+        }
+
         Optional<RouteStoppingPoint> currentStoppingPoint = db.findFirstStoppingPointOfRoute(routeId);
 
         return currentStoppingPoint.map(routeStoppingPoint -> new ReachedRouteStopDto(ReachedRouteStopResult.SUCCESS, routeStoppingPoint)).orElseGet(() -> new ReachedRouteStopDto(ReachedRouteStopResult.DB_ERROR, null));
